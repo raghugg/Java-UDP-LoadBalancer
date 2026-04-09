@@ -20,6 +20,7 @@ public class Client {
             System.out.println("Connected to " + host + ":" + port);
             out.println(message);
             out.println(); // blank line signals end of request
+            socket.shutdownOutput(); // signal EOF so the worker knows we're done sending
 
             String response;
             while ((response = in.readLine()) != null) {
