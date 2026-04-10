@@ -12,13 +12,20 @@ public class Worker {
         int port = args.length > 0 ? Integer.parseInt(args[0]) : 8080;
         String workerId = args.length > 1 ? args[1] : "worker-default";
 
+        String proxyHost = System.getenv("PROXY_HOST") != null ? System.getenv("PROXY_HOST") : "localhost";
+        int proxyUdpPort = System.getenv("PROXY_UDP_PORT") != null
+            ? Integer.parseInt(System.getenv("PROXY_UDP_PORT")) : 9000;
+
         ServerSocket serverSocket = new ServerSocket(port);
         serverSocket.setReuseAddress(true);
         ExecutorService pool = Executors.newCachedThreadPool();
+        HeartbeatSender heartbeat = new HeartbeatSender(workerId, proxyHost, proxyUdpPort);
 
         System.out.println("[" + workerId + "] Listening on port " + port);
+        heartbeat.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            heartbeat.stop();
             try { serverSocket.close(); } catch (IOException ignored) {}
             pool.shutdown();
             System.out.println("[" + workerId + "] Shut down.");
