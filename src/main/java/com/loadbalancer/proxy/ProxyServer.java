@@ -3,33 +3,32 @@ package com.loadbalancer.proxy;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ProxyServer {
 
-    // Hardcoded worker list: each entry is { host, port }
-    private static final List<String[]> WORKERS = Arrays.asList(
-        new String[]{"localhost", "8081"},
-        new String[]{"localhost", "8082"},
-        new String[]{"localhost", "8083"}
-    );
-
     public static void main(String[] args) throws IOException {
-        int port = args.length > 0 ? Integer.parseInt(args[0]) : 8080;
+        int tcpPort = args.length > 0 ? Integer.parseInt(args[0]) : 8080;
+        int udpPort = System.getenv("PROXY_UDP_PORT") != null
+            ? Integer.parseInt(System.getenv("PROXY_UDP_PORT")) : 9000;
 
-        ServerSocket serverSocket = new ServerSocket(port);
+        WorkerRegistry registry = new WorkerRegistry();
+        HeartbeatReceiver heartbeat = new HeartbeatReceiver(udpPort, registry.getMap());
+        heartbeat.start();
+
+        ServerSocket serverSocket = new ServerSocket(tcpPort);
         serverSocket.setReuseAddress(true);
         ExecutorService pool = Executors.newCachedThreadPool();
         AtomicInteger counter = new AtomicInteger(0);
 
-        System.out.println("[Proxy] Listening on port " + port);
-        System.out.println("[Proxy] Workers: " + WORKERS.size());
+        System.out.println("[Proxy] Listening on port " + tcpPort);
+        System.out.println("[Proxy] Waiting for workers to register via UDP...");
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            heartbeat.stop();
+            registry.stop();
             try { serverSocket.close(); } catch (IOException ignored) {}
             pool.shutdown();
             System.out.println("[Proxy] Shut down.");
@@ -38,7 +37,7 @@ public class ProxyServer {
         while (!serverSocket.isClosed()) {
             try {
                 Socket client = serverSocket.accept();
-                pool.submit(new ProxyHandler(client, WORKERS, counter));
+                pool.submit(new ProxyHandler(client, registry, counter));
             } catch (IOException e) {
                 if (!serverSocket.isClosed()) {
                     System.err.println("[Proxy] Accept error: " + e.getMessage());

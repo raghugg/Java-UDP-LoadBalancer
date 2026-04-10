@@ -1,41 +1,49 @@
 package com.loadbalancer.proxy;
 
+import com.loadbalancer.model.WorkerInfo;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ProxyHandler implements Runnable {
 
     private final Socket clientSocket;
-    private final List<String[]> workers;
+    private final WorkerRegistry registry;
     private final AtomicInteger counter;
 
-    public ProxyHandler(Socket clientSocket, List<String[]> workers, AtomicInteger counter) {
+    public ProxyHandler(Socket clientSocket, WorkerRegistry registry, AtomicInteger counter) {
         this.clientSocket = clientSocket;
-        this.workers = workers;
+        this.registry = registry;
         this.counter = counter;
     }
 
     @Override
     public void run() {
+        List<WorkerInfo> workers = registry.getLiveWorkers();
+
+        if (workers.isEmpty()) {
+            sendErrorAndClose("503 Service Unavailable: no workers registered\n");
+            return;
+        }
+
         // Round robin: atomically increment counter, mod by worker count
         int index = Math.abs(counter.getAndIncrement() % workers.size());
-        String[] worker = workers.get(index);
-        String workerHost = worker[0];
-        int workerPort = Integer.parseInt(worker[1]);
+        WorkerInfo worker = workers.get(index);
 
-        System.out.println("[Proxy] Forwarding to " + workerHost + ":" + workerPort);
+        System.out.println("[Proxy] Forwarding to " + worker);
 
         try (clientSocket;
-             Socket workerSocket = new Socket(workerHost, workerPort)) {
+             Socket workerSocket = new Socket(worker.host, worker.port)) {
 
             relay(clientSocket, workerSocket);
 
         } catch (IOException e) {
-            System.err.println("[Proxy] Error relaying to worker: " + e.getMessage());
+            System.err.println("[Proxy] Error relaying to " + worker.id + ": " + e.getMessage());
         }
     }
 
@@ -65,5 +73,11 @@ public class ProxyHandler implements Runnable {
         } catch (IOException ignored) {
             // EOF or socket closed — normal end of stream
         }
+    }
+
+    private void sendErrorAndClose(String message) {
+        try (clientSocket) {
+            clientSocket.getOutputStream().write(message.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException ignored) {}
     }
 }
