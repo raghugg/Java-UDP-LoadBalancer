@@ -11,13 +11,15 @@ import java.util.concurrent.TimeUnit;
 public class HeartbeatSender {
 
     private final String workerId;
+    private final int workerPort;
     private final InetAddress proxyAddress;
     private final int proxyUdpPort;
     private final DatagramSocket socket;
     private final ScheduledExecutorService scheduler;
 
-    public HeartbeatSender(String workerId, String proxyHost, int proxyUdpPort) throws IOException {
+    public HeartbeatSender(String workerId, int workerPort, String proxyHost, int proxyUdpPort) throws IOException {
         this.workerId = workerId;
+        this.workerPort = workerPort;
         this.proxyAddress = InetAddress.getByName(proxyHost);
         this.proxyUdpPort = proxyUdpPort;
         this.socket = new DatagramSocket();
@@ -37,7 +39,7 @@ public class HeartbeatSender {
     private void sendHeartbeat() {
         try {
             // Hand-rolled JSON — no external library needed
-            String payload = "{\"id\":\"" + workerId + "\",\"load\":0.0}";
+            String payload = "{\"id\":\"" + workerId + "\",\"port\":" + workerPort + ",\"load\":0.0}";
             byte[] data = payload.getBytes();
             DatagramPacket packet = new DatagramPacket(data, data.length, proxyAddress, proxyUdpPort);
             socket.send(packet);
