@@ -10,7 +10,7 @@ public class Worker {
 
     public static void main(String[] args) throws IOException {
         int port = args.length > 0 ? Integer.parseInt(args[0]) : 8080;
-        String workerId = args.length > 1 ? args[1] : "worker-default";
+        String workerId = System.getenv("WORKER_ID") != null ? System.getenv("WORKER_ID") : "worker-default";
 
         String proxyHost = System.getenv("PROXY_HOST") != null ? System.getenv("PROXY_HOST") : "localhost";
         int proxyUdpPort = System.getenv("PROXY_UDP_PORT") != null
@@ -19,7 +19,7 @@ public class Worker {
         ServerSocket serverSocket = new ServerSocket(port);
         serverSocket.setReuseAddress(true);
         ExecutorService pool = Executors.newCachedThreadPool();
-        HeartbeatSender heartbeat = new HeartbeatSender(workerId, proxyHost, proxyUdpPort);
+        HeartbeatSender heartbeat = new HeartbeatSender(workerId, port, proxyHost, proxyUdpPort);
 
         System.out.println("[" + workerId + "] Listening on port " + port);
         heartbeat.start();
