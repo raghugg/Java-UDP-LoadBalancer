@@ -16,6 +16,7 @@ public class ProxyServer {
 
         WorkerRegistry registry = new WorkerRegistry();
         HeartbeatReceiver heartbeat = new HeartbeatReceiver(udpPort, registry.getMap());
+        CircuitBreaker circuitBreaker = new CircuitBreaker();
         heartbeat.start();
 
         ServerSocket serverSocket = new ServerSocket(tcpPort);
@@ -37,7 +38,7 @@ public class ProxyServer {
         while (!serverSocket.isClosed()) {
             try {
                 Socket client = serverSocket.accept();
-                pool.submit(new ProxyHandler(client, registry, counter));
+                pool.submit(new ProxyHandler(client, registry, counter, circuitBreaker));
             } catch (IOException e) {
                 if (!serverSocket.isClosed()) {
                     System.err.println("[Proxy] Accept error: " + e.getMessage());
