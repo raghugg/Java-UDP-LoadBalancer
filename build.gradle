@@ -1,0 +1,35 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.loadbalancer'
+version = '1.0'
+sourceCompatibility = '17'
+
+repositories {
+    mavenCentral()
+}
+
+// Fat jar for the Proxy — bundles all dependencies into a single runnable jar
+task proxyJar(type: Jar) {
+    archiveFileName = 'proxy.jar'
+    destinationDirectory = file('build/libs')
+    manifest {
+        attributes 'Main-Class': 'com.loadbalancer.proxy.ProxyServer'
+    }
+    from sourceSets.main.output
+    from configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// Fat jar for the Worker — bundles all dependencies into a single runnable jar
+task workerJar(type: Jar) {
+    archiveFileName = 'worker.jar'
+    destinationDirectory = file('build/libs')
+    manifest {
+        attributes 'Main-Class': 'com.loadbalancer.worker.Worker'
+    }
+    from sourceSets.main.output
+    from configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

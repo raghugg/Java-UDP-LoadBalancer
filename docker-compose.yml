@@ -1,0 +1,55 @@
+networks:
+  # Simulates the public-facing network — clients connect through here
+  public-net:
+    driver: bridge
+
+  # Internal network — only the proxy and workers communicate here
+  # UDP heartbeats travel on this network
+  private-net:
+    driver: bridge
+
+services:
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/proxy/Dockerfile
+    networks:
+      - public-net
+      - private-net
+    ports:
+      - "8080:8080"
+    environment:
+      PROXY_UDP_PORT: 9000
+
+  worker-1:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
+    networks:
+      - private-net
+    environment:
+      WORKER_ID: worker-1
+      PROXY_HOST: proxy
+      PROXY_UDP_PORT: 9000
+
+  worker-2:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
+    networks:
+      - private-net
+    environment:
+      WORKER_ID: worker-2
+      PROXY_HOST: proxy
+      PROXY_UDP_PORT: 9000
+
+  worker-3:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
+    networks:
+      - private-net
+    environment:
+      WORKER_ID: worker-3
+      PROXY_HOST: proxy
+      PROXY_UDP_PORT: 9000
