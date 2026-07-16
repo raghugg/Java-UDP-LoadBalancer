@@ -11,7 +11,7 @@ networks:
 services:
   proxy:
     build:
-      context: .
+      context: ..
       dockerfile: docker/proxy/Dockerfile
     networks:
       - public-net
@@ -23,7 +23,7 @@ services:
 
   worker-1:
     build:
-      context: .
+      context: ..
       dockerfile: docker/worker/Dockerfile
     networks:
       - private-net
@@ -34,7 +34,7 @@ services:
 
   worker-2:
     build:
-      context: .
+      context: ..
       dockerfile: docker/worker/Dockerfile
     networks:
       - private-net
@@ -45,7 +45,7 @@ services:
 
   worker-3:
     build:
-      context: .
+      context: ..
       dockerfile: docker/worker/Dockerfile
     networks:
       - private-net
