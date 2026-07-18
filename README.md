@@ -13,7 +13,8 @@ Workers announce themselves to the proxy by sending a small UDP packet every 500
 - **Java** - raw sockets (ServerSocket, Socket, DatagramSocket), multithreading, InputStream/OutputStream for byte-level stream relay
 - **TCP** - used for the actual request/response data between client, proxy, and workers
 - **UDP** - used for the heartbeat control plane. Workers blast a packet at the proxy every 500ms, proxy uses this to maintain a live registry of healthy workers
-- **Docker / Docker Compose** - each worker runs in its own container, proxy runs in a separate container. Two virtual networks: one public-facing, one internal for proxy-worker communication
+- **Docker** - each worker runs in its own container, proxy runs in a separate container
+- **Kubernetes** - proxy and workers run as Deployments in a cluster, proxy is fronted by a Service so workers can find it by DNS name
 
 ## How to run
 
@@ -21,6 +22,18 @@ Workers announce themselves to the proxy by sending a small UDP packet every 500
 # build jars
 ./gradlew proxyJar workerJar
 
-# start everything
-docker compose up --build
+# build images (from repo root)
+docker build -t udp-lb-proxy:latest -f docker/proxy/Dockerfile .
+docker build -t udp-lb-worker:latest -f docker/worker/Dockerfile .
+
+# load images into your cluster (kind example, skip if using minikube's docker daemon)
+kind load docker-image udp-lb-proxy:latest udp-lb-worker:latest
+
+# deploy
+kubectl apply -f k8s/
+
+# reach the proxy
+kubectl port-forward svc/proxy 8080:8080
 ```
+
+The old docker-compose setup still lives in [legacy/](legacy/) for reference.
